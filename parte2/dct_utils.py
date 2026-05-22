@@ -13,14 +13,11 @@ def create_mask(F, d):
 
 
 # comprime un singolo blocco F x F
-def compress_block(block, d):
-    F = block.shape[0]
-
+def compress_block(block, mask):
     # DCT2 della libreria
     c = dctn(block.astype(float), norm='ortho')
 
     # taglio delle frequenze alte
-    mask = create_mask(F, d)
     c[~mask] = 0.0
 
     # trasformata inversa
@@ -46,11 +43,13 @@ def compress_image(img_array, F, d):
     img_crop = img_array[:H_crop, :W_crop].copy()
     compressed_img = np.zeros_like(img_crop)
 
+    mask = create_mask(F, d)
+
     for i in range(n_vertical_blocks):
         for j in range(n_horizontal_blocks):
             r0, r1 = i * F, (i + 1) * F
             c0, c1 = j * F, (j + 1) * F
             block = img_crop[r0:r1, c0:c1]
-            compressed_img[r0:r1, c0:c1] = compress_block(block, d)
+            compressed_img[r0:r1, c0:c1] = compress_block(block, mask)
 
     return img_crop, compressed_img
