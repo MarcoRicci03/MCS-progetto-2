@@ -6,6 +6,7 @@ from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
 from dct_utils import compress_image, create_mask
 
+
 class ImageCompressorApp:
     def __init__(self, root):
         self.root = root
@@ -37,22 +38,34 @@ class ImageCompressorApp:
         frame_param = ttk.LabelFrame(self.root, text="2. Parametri")
         frame_param.pack(fill="x", padx=10, pady=10)
 
-        ttk.Label(frame_param, text="F (dimensione blocco):").grid(row=0, column=0, padx=10, pady=8, sticky="w")
+        ttk.Label(frame_param, text="F (dimensione blocco):").grid(
+            row=0, column=0, padx=10, pady=8, sticky="w"
+        )
         self.var_F = tk.IntVar(value=8)
-        self.spin_F = ttk.Spinbox(frame_param, from_=2, to=64, textvariable=self.var_F, width=10)
+        self.spin_F = ttk.Spinbox(
+            frame_param, from_=2, to=64, textvariable=self.var_F, width=10
+        )
         self.spin_F.grid(row=0, column=1, padx=10, pady=8)
 
-        ttk.Label(frame_param, text="d (soglia frequenze):").grid(row=1, column=0, padx=10, pady=8, sticky="w")
+        ttk.Label(frame_param, text="d (soglia frequenze):").grid(
+            row=1, column=0, padx=10, pady=8, sticky="w"
+        )
         self.var_d = tk.IntVar(value=5)
-        self.spin_d = ttk.Spinbox(frame_param, from_=0, to=14, textvariable=self.var_d, width=10)
+        self.spin_d = ttk.Spinbox(
+            frame_param, from_=0, to=14, textvariable=self.var_d, width=10
+        )
         self.spin_d.grid(row=1, column=1, padx=10, pady=8)
 
-        self.label_range = ttk.Label(frame_param, text="Con F=8, d deve stare tra 0 e 14")
+        self.label_range = ttk.Label(
+            frame_param, text="Con F=8, d deve stare tra 0 e 14"
+        )
         self.label_range.grid(row=1, column=2, padx=10, pady=8, sticky="w")
 
         self.var_F.trace_add("write", self.update_range_d)
 
-        btn_execute = ttk.Button(self.root, text="Comprimi e visualizza", command=self.execute)
+        btn_execute = ttk.Button(
+            self.root, text="Comprimi e visualizza", command=self.execute
+        )
         btn_execute.pack(pady=20)
 
     def update_range_d(self, *_):
@@ -66,15 +79,14 @@ class ImageCompressorApp:
 
     def load_image(self):
         path = filedialog.askopenfilename(
-            title="Seleziona immagine BMP",
-            filetypes=[("Bitmap", "*.bmp")]
+            title="Seleziona immagine BMP", filetypes=[("Bitmap", "*.bmp")]
         )
 
         if not path:
             return
 
         try:
-            img = Image.open(path).convert("L")
+            img = Image.open(path)
             self.img_array = np.array(img, dtype=np.uint8)
             self.label_file.config(text=path.split("/")[-1])
             self.update_preview()
@@ -138,10 +150,8 @@ class ImageCompressorApp:
 
         axes[1].imshow(compressa, cmap="gray", vmin=0, vmax=255)
         axes[1].set_title(
-            f"Compressa\n"
-            f"F={F}, d={d} | "
-            f"Coef. mantenuti: {kept_pct:.1f}%",
-            fontsize=10
+            f"Compressa\n" f"F={F}, d={d} | " f"Coef. mantenuti: {kept_pct:.1f}%",
+            fontsize=10,
         )
         axes[1].axis("off")
 

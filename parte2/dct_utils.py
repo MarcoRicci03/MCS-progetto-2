@@ -12,7 +12,7 @@ def create_mask(F, d):
 # divide l'immagine in blocchi F x F, scarta gli avanzi e ricompone
 def compress_image(img_array, F, d):
     H, W = img_array.shape
-    
+
     # Scarta gli avanzi (Discard remaining pixels instead of padding)
     H_new = H - (H % F)
     W_new = W - (W % F)
@@ -28,9 +28,11 @@ def compress_image(img_array, F, d):
             r0, r1 = i * F, (i + 1) * F
             c0, c1 = j * F, (j + 1) * F
             block = img_array[r0:r1, c0:c1]
-            c = dctn(block.astype(float), norm='ortho')
+            c = dctn(block.astype(float), norm="ortho")
             c[~mask] = 0.0
-            reconstructed = idctn(c, norm='ortho')
-            compressed[r0:r1, c0:c1] = np.clip(np.round(reconstructed), 0, 255).astype(np.uint8)
+            reconstructed = idctn(c, norm="ortho")
+            compressed[r0:r1, c0:c1] = np.clip(np.round(reconstructed), 0, 255).astype(
+                np.uint8
+            )
 
     return compressed
