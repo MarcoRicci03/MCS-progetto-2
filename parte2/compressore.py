@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
@@ -5,7 +6,8 @@ import numpy as np
 from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
-from dct_utils import compress_image, create_mask
+from matplotlib.colors import ListedColormap
+from dct_utils import compress_image
 
 
 class ImageCompressorApp:
@@ -87,9 +89,9 @@ class ImageCompressorApp:
             return
 
         try:
-            img = Image.open(path)
+            img = Image.open(path).convert("L")
             self.img_array = np.array(img, dtype=np.uint8)
-            self.label_file.config(text=path.split("/")[-1])
+            self.label_file.config(text=os.path.basename(path))
             self.update_preview()
         except Exception as e:
             messagebox.showerror("Errore", f"Impossibile aprire il file:\n{e}")
@@ -121,16 +123,18 @@ class ImageCompressorApp:
             return
 
         try:
-            img_comp = compress_image(self.img_array, F, d)
+            img_comp, stats = compress_image(self.img_array, F, d)
             self.last_compressed = img_comp
-            self.show_figures(img_comp, F, d)
+            self.show_figures(img_comp, F, d, stats)
         except Exception as e:
             messagebox.showerror("Errore", str(e))
 
-    def show_figures(self, compressa, F, d):
+    def show_figures(self, compressa, F, d, stats):
         orig = self.img_array
-        orig_h, orig_w = orig.shape
+
         comp_h, comp_w = compressa.shape
+        orig_cropped = orig[:comp_h, :comp_w]
+        orig_h, orig_w = orig_cropped.shape
 
         max_display_w = 800
         max_display_h = 500
@@ -138,24 +142,47 @@ class ImageCompressorApp:
         display_w = int(orig_w * scale)
         display_h = int(orig_h * scale)
 
-        fig, axes = plt.subplots(1, 2, figsize=(display_w / 80, display_h / 80))
+        fig, axes = plt.subplots(2, 2, figsize=(display_w / 80, display_h / 80))
 
-        mask = create_mask(F, d)
-        total_coeffs = F * F
-        kept_coeffs = np.sum(mask)
-        compression_pct = (1 - kept_coeffs / total_coeffs) * 100
-        kept_pct = 100 - compression_pct
+        mask = stats["mask"]
+        kept_pct = stats["kept_coeffs"] / stats["total_coeffs"] * 100
 
-        axes[0].imshow(orig, cmap="gray", vmin=0, vmax=255)
-        axes[0].set_title(f"Originale ({orig_w}x{orig_h})\nF={F}, d={d}", fontsize=10)
-        axes[0].axis("off")
+        axes[0, 0].imshow(orig_cropped, cmap="gray", vmin=0, vmax=255)
+        axes[0, 0].set_title(f"Originale ({orig_w}x{orig_h})\nF={F}, d={d}", fontsize=10)
+        axes[0, 0].axis("off")
 
-        axes[1].imshow(compressa, cmap="gray", vmin=0, vmax=255)
-        axes[1].set_title(
-            f"Compressa\n" f"F={F}, d={d} | " f"Coef. mantenuti: {kept_pct:.1f}%",
+        axes[0, 1].imshow(compressa, cmap="gray", vmin=0, vmax=255)
+        axes[0, 1].set_title(
+            f"Compressa\nF={F}, d={d} | Coef. mantenuti: {kept_pct:.1f}%",
             fontsize=10,
         )
-        axes[1].axis("off")
+        axes[0, 1].axis("off")
+
+        error_map = np.abs(orig_cropped.astype(float) - compressa.astype(float))
+        mse = np.mean(error_map ** 2)
+        fattore_esag = 5
+        error_map_vis = np.clip(error_map * fattore_esag, 0, 255).astype(np.uint8)
+
+        axes[1, 0].imshow(error_map_vis, cmap="hot")
+        axes[1, 0].set_title(
+            f"Mappa Errore (Vis. x{fattore_esag})\nMSE: {mse:.2f}", fontsize=10
+        )
+        axes[1, 0].axis("off")
+
+        mask_vis = mask.astype(float)
+        cmap_mask = ListedColormap(["#e74c3c", "#f1c40f"])
+        axes[1, 1].imshow(mask_vis, cmap=cmap_mask, vmin=0, vmax=1, interpolation="nearest")
+        axes[1, 1].set_title(
+            f"Maschera DCT\nF={F}, d={d} | {stats['kept_coeffs']}/{stats['total_coeffs']} coef.",
+            fontsize=10,
+        )
+        axes[1, 1].set_xlabel("k (colonna)")
+        axes[1, 1].set_ylabel("l (riga)")
+        axes[1, 1].set_xticks(range(F))
+        axes[1, 1].set_yticks(range(F))
+        axes[1, 1].set_xticks(np.arange(-0.5, F, 1), minor=True)
+        axes[1, 1].set_yticks(np.arange(-0.5, F, 1), minor=True)
+        axes[1, 1].grid(which="minor", color="black", linewidth=0.5)
 
         # embed the matplotlib figure inside a Tkinter Toplevel window
         top = tk.Toplevel(self.root)
