@@ -4,7 +4,7 @@ from tkinter import filedialog, messagebox, ttk
 import numpy as np
 from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Button as MplButton
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from dct_utils import compress_image, create_mask
 
 
@@ -17,7 +17,6 @@ class ImageCompressorApp:
 
         self.img_array = None
         self.photo_image = None
-        self.last_compressed = None
 
         self.create_interface()
 
@@ -76,7 +75,7 @@ class ImageCompressorApp:
             max_d = 2 * F - 2
             self.spin_d.config(to=max_d)
             self.label_range.config(text=f"Con F={F}, d deve stare tra 0 e {max_d}")
-        except tk.TclError:
+        except:
             pass
 
     def load_image(self):
@@ -88,7 +87,7 @@ class ImageCompressorApp:
             return
 
         try:
-            img = Image.open(path).convert("L")
+            img = Image.open(path)
             self.img_array = np.array(img, dtype=np.uint8)
             self.label_file.config(text=path.split("/")[-1])
             self.update_preview()
@@ -123,26 +122,23 @@ class ImageCompressorApp:
 
         try:
             img_comp = compress_image(self.img_array, F, d)
+            self.last_compressed = img_comp
             self.show_figures(img_comp, F, d)
         except Exception as e:
             messagebox.showerror("Errore", str(e))
 
     def show_figures(self, compressa, F, d):
         orig = self.img_array
-
-        comp_h, comp_w = compressa.shape
-        orig_cropped = orig[:comp_h, :comp_w]
-
         orig_h, orig_w = orig.shape
         comp_h, comp_w = compressa.shape
 
-        max_display_w = 1000
-        max_display_h = 800
+        max_display_w = 800
+        max_display_h = 500
         scale = min(max_display_w / orig_w, max_display_h / orig_h, 1.0)
         display_w = int(orig_w * scale)
         display_h = int(orig_h * scale)
 
-        fig, axes = plt.subplots(2, 2, figsize=(display_w / 60, display_h / 60), sharex=True, sharey=True)
+        fig, axes = plt.subplots(1, 2, figsize=(display_w / 80, display_h / 80))
 
         mask = create_mask(F, d)
         total_coeffs = F * F
@@ -150,61 +146,55 @@ class ImageCompressorApp:
         compression_pct = (1 - kept_coeffs / total_coeffs) * 100
         kept_pct = 100 - compression_pct
 
-        axes[0, 0].imshow(orig, cmap="gray", vmin=0, vmax=255)
-        axes[0, 0].set_title(f"Originale ({orig_w}x{orig_h})\nF={F}, d={d}", fontsize=10)
-        axes[0, 0].axis("off")
+        axes[0].imshow(orig, cmap="gray", vmin=0, vmax=255)
+        axes[0].set_title(f"Originale ({orig_w}x{orig_h})\nF={F}, d={d}", fontsize=10)
+        axes[0].axis("off")
 
-        axes[0, 1].imshow(compressa, cmap="gray", vmin=0, vmax=255)
-        axes[0, 1].set_title(
-            f"Compressa\n"
-            f"F={F}, d={d} | "
-            f"Coef. mantenuti: {kept_pct:.1f}%",
-            fontsize=10
+        axes[1].imshow(compressa, cmap="gray", vmin=0, vmax=255)
+        axes[1].set_title(
+            f"Compressa\n" f"F={F}, d={d} | " f"Coef. mantenuti: {kept_pct:.1f}%",
+            fontsize=10,
         )
-        axes[0, 1].axis("off")
+        axes[1].axis("off")
 
-        error_map = np.abs(orig_cropped.astype(float) - compressa.astype(float))
-        mse = np.mean(error_map ** 2)
+        # embed the matplotlib figure inside a Tkinter Toplevel window
+        top = tk.Toplevel(self.root)
+        top.title("Visualizzazione immagini")
 
-        fattore_esag = 5
-        error_map_vis = np.clip(error_map * fattore_esag, 0, 255).astype(np.uint8)
+        canvas = FigureCanvasTkAgg(fig, master=top)
+        canvas.draw()
+        canvas.get_tk_widget().pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
-        axes[1, 0].imshow(error_map_vis, cmap="hot")
-        axes[1, 0].set_title(f"Mappa Errore (Vis. x{fattore_esag})  \nMSE: {mse:.2f}", fontsize=10)
-        axes[1, 0].axis("off")
-        
-        axes[1, 1].axis("off")
+        toolbar = NavigationToolbar2Tk(canvas, top)
+        toolbar.update()
+        toolbar.pack(side=tk.TOP, fill=tk.X)
 
-        # Store compressed image and add save button
-        self.last_compressed = compressa
-        ax_save = fig.add_axes([0.45, 0.01, 0.1, 0.04])
-        self._btn_save = MplButton(ax_save, "Salva compressa")
-        self._btn_save.on_clicked(self._on_save_clicked)
+        # frame with Save button
+        btn_frame = ttk.Frame(top)
+        btn_frame.pack(side=tk.BOTTOM, fill="x", padx=8, pady=6)
 
-        fig.subplots_adjust(bottom=0.08)
-        plt.show()
-
-
-    def _on_save_clicked(self, event=None):
-        """Handle save button click: save last compressed image as BMP."""
-        if self.last_compressed is None:
-            messagebox.showwarning(
-                "Attenzione", "Nessuna immagine compressa da salvare."
-            )
-            return
-
-        try:
+        def on_save_click():
             path = filedialog.asksaveasfilename(
+                title="Salva immagine compressa",
                 defaultextension=".bmp",
-                filetypes=[("Bitmap", "*.bmp")],
-                title="Salva immagine compressa"
+                filetypes=[("Bitmap", "*.bmp"), ("PNG", "*.png"), ("JPEG", "*.jpg")],
+                parent=top,
             )
             if not path:
                 return
-            Image.fromarray(self.last_compressed).save(path, format="BMP")
-            messagebox.showinfo("Successo", f"Immagine salvata:\n{path}")
-        except Exception as e:
-            messagebox.showerror("Errore", f"Impossibile salvare il file:\n{e}")
+            try:
+                img_to_save = Image.fromarray(compressa)
+                img_to_save.save(path)
+                messagebox.showinfo("Salvataggio", f"Immagine salvata in:\n{path}", parent=top)
+            except Exception as e:
+                messagebox.showerror("Errore", f"Impossibile salvare l'immagine:\n{e}", parent=top)
+
+        btn_save = ttk.Button(btn_frame, text="Salva compressa", command=on_save_click)
+        btn_save.pack(side=tk.RIGHT)
+
+        # ensure the window appears above the main app
+        top.transient(self.root)
+        top.grab_set()
 
 
 if __name__ == "__main__":
