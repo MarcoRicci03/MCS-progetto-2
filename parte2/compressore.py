@@ -4,6 +4,7 @@ from tkinter import filedialog, messagebox, ttk
 import numpy as np
 from PIL import Image, ImageTk
 import matplotlib.pyplot as plt
+from matplotlib.widgets import Button as MplButton
 from dct_utils import compress_image, create_mask
 
 
@@ -16,6 +17,7 @@ class ImageCompressorApp:
 
         self.img_array = None
         self.photo_image = None
+        self.last_compressed = None
 
         self.create_interface()
 
@@ -173,8 +175,36 @@ class ImageCompressorApp:
         
         axes[1, 1].axis("off")
 
-        plt.tight_layout()
+        # Store compressed image and add save button
+        self.last_compressed = compressa
+        ax_save = fig.add_axes([0.45, 0.01, 0.1, 0.04])
+        self._btn_save = MplButton(ax_save, "Salva compressa")
+        self._btn_save.on_clicked(self._on_save_clicked)
+
+        fig.subplots_adjust(bottom=0.08)
         plt.show()
+
+
+    def _on_save_clicked(self, event=None):
+        """Handle save button click: save last compressed image as BMP."""
+        if self.last_compressed is None:
+            messagebox.showwarning(
+                "Attenzione", "Nessuna immagine compressa da salvare."
+            )
+            return
+
+        try:
+            path = filedialog.asksaveasfilename(
+                defaultextension=".bmp",
+                filetypes=[("Bitmap", "*.bmp")],
+                title="Salva immagine compressa"
+            )
+            if not path:
+                return
+            Image.fromarray(self.last_compressed).save(path, format="BMP")
+            messagebox.showinfo("Successo", f"Immagine salvata:\n{path}")
+        except Exception as e:
+            messagebox.showerror("Errore", f"Impossibile salvare il file:\n{e}")
 
 
 if __name__ == "__main__":
