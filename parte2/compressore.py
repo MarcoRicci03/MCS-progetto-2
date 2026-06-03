@@ -144,6 +144,12 @@ class ImageCompressorApp:
 
         fig, axes = plt.subplots(2, 2, figsize=(display_w / 80, display_h / 80))
 
+        # Sincronizza lo zoom tra le tre immagini
+        axes[0, 1].sharex(axes[0, 0])
+        axes[0, 1].sharey(axes[0, 0])
+        axes[1, 0].sharex(axes[0, 0])
+        axes[1, 0].sharey(axes[0, 0])
+
         mask = stats["mask"]
         kept_pct = stats["kept_coeffs"] / stats["total_coeffs"] * 100
 
@@ -220,7 +226,7 @@ class ImageCompressorApp:
         btn_save.pack(side=tk.RIGHT)
 
         # ensure the window appears above the main app
-        top.transient(self.root)
+        # top.transient(self.root)  # rimosso per permettere il fullscreen/maximize
         top.grab_set()
 
 
