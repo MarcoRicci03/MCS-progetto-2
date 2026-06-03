@@ -74,7 +74,7 @@ class ImageCompressorApp:
             max_d = 2 * F - 2
             self.spin_d.config(to=max_d)
             self.label_range.config(text=f"Con F={F}, d deve stare tra 0 e {max_d}")
-        except:
+        except tk.TclError:
             pass
 
     def load_image(self):
@@ -86,7 +86,7 @@ class ImageCompressorApp:
             return
 
         try:
-            img = Image.open(path)
+            img = Image.open(path).convert("L")
             self.img_array = np.array(img, dtype=np.uint8)
             self.label_file.config(text=path.split("/")[-1])
             self.update_preview()
@@ -152,10 +152,12 @@ class ImageCompressorApp:
         axes[0, 0].set_title(f"Originale ({orig_w}x{orig_h})\nF={F}, d={d}", fontsize=10)
         axes[0, 0].axis("off")
 
-        axes[1].imshow(compressa, cmap="gray", vmin=0, vmax=255)
-        axes[1].set_title(
-            f"Compressa\n" f"F={F}, d={d} | " f"Coef. mantenuti: {kept_pct:.1f}%",
-            fontsize=10,
+        axes[0, 1].imshow(compressa, cmap="gray", vmin=0, vmax=255)
+        axes[0, 1].set_title(
+            f"Compressa\n"
+            f"F={F}, d={d} | "
+            f"Coef. mantenuti: {kept_pct:.1f}%",
+            fontsize=10
         )
         axes[0, 1].axis("off")
 
