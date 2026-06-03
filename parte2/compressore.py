@@ -115,16 +115,20 @@ class ImageCompressorApp:
 
     def show_figures(self, compressa, F, d):
         orig = self.img_array
+
+        comp_h, comp_w = compressa.shape
+        orig_cropped = orig[:comp_h, :comp_w]
+
         orig_h, orig_w = orig.shape
         comp_h, comp_w = compressa.shape
 
-        max_display_w = 800
-        max_display_h = 500
+        max_display_w = 1000
+        max_display_h = 800
         scale = min(max_display_w / orig_w, max_display_h / orig_h, 1.0)
         display_w = int(orig_w * scale)
         display_h = int(orig_h * scale)
 
-        fig, axes = plt.subplots(1, 2, figsize=(display_w / 80, display_h / 80))
+        fig, axes = plt.subplots(2, 2, figsize=(display_w / 60, display_h / 60), sharex=True, sharey=True)
 
         mask = create_mask(F, d)
         total_coeffs = F * F
@@ -132,18 +136,30 @@ class ImageCompressorApp:
         compression_pct = (1 - kept_coeffs / total_coeffs) * 100
         kept_pct = 100 - compression_pct
 
-        axes[0].imshow(orig, cmap="gray", vmin=0, vmax=255)
-        axes[0].set_title(f"Originale ({orig_w}x{orig_h})\nF={F}, d={d}", fontsize=10)
-        axes[0].axis("off")
+        axes[0, 0].imshow(orig, cmap="gray", vmin=0, vmax=255)
+        axes[0, 0].set_title(f"Originale ({orig_w}x{orig_h})\nF={F}, d={d}", fontsize=10)
+        axes[0, 0].axis("off")
 
-        axes[1].imshow(compressa, cmap="gray", vmin=0, vmax=255)
-        axes[1].set_title(
+        axes[0, 1].imshow(compressa, cmap="gray", vmin=0, vmax=255)
+        axes[0, 1].set_title(
             f"Compressa\n"
             f"F={F}, d={d} | "
             f"Coef. mantenuti: {kept_pct:.1f}%",
             fontsize=10
         )
-        axes[1].axis("off")
+        axes[0, 1].axis("off")
+
+        error_map = np.abs(orig_cropped.astype(float) - compressa.astype(float))
+        mse = np.mean(error_map ** 2)
+
+        fattore_esag = 5
+        error_map_vis = np.clip(error_map * fattore_esag, 0, 255).astype(np.uint8)
+
+        axes[1, 0].imshow(error_map_vis, cmap="hot")
+        axes[1, 0].set_title(f"Mappa Errore (Vis. x{fattore_esag})  \nMSE: {mse:.2f}", fontsize=10)
+        axes[1, 0].axis("off")
+        
+        axes[1, 1].axis("off")
 
         plt.tight_layout()
         plt.show()
