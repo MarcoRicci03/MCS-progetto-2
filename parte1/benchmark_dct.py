@@ -225,6 +225,6 @@ def plot_benchmark(N_values, tempi_naive, tempi_libreria):
 if __name__ == "__main__":
     verifica_caso_test()
 
-    N_values = [4, 8, 16, 32, 64, 100]
+    N_values = [16, 32, 64, 128, 256, 512, 1024]
     tempi_naive, tempi_libreria = benchmark(N_values, ripetizioni=3)
     plot_benchmark(N_values, tempi_naive, tempi_libreria)
