@@ -217,7 +217,7 @@ def plot_benchmark(N_values, tempi_naive, tempi_libreria):
     ax.legend(fontsize=10)
     ax.grid(True, which="both", linestyle="--", alpha=0.4)
     plt.tight_layout()
-    plt.savefig("parte1/benchmark_dct.png", dpi=150)
+    plt.savefig("benchmark_dct.png", dpi=150)
     print("Grafico salvato: benchmark_dct.png")
     plt.show()
 
